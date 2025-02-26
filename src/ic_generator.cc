@@ -406,7 +406,8 @@ int run( config_file& the_config )
         {
             delta_power.assign_function_of_grids_kdep([&](auto k, auto delta_power) {
                 real_t kmod = k.norm();
-                return std::pow(kmod/k0, nf)*delta_power;
+                using ComplexType = decltype(delta_power);  // Extracts the type of delta_power
+                return ComplexType(std::pow(kmod/k0, nf)) * delta_power;
             }, delta_power);
         }
  

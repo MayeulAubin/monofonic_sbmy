@@ -19,11 +19,11 @@ public:
     explicit simbelmyne_output_plugin(config_file &cf, std::unique_ptr<cosmology::calculator> &pcc )
     : output_plugin(cf, pcc, "Simbelmyne HDF5")
     {
-        real_t astart   = 1.0/(1.0+cf_.get_value<double>("setup", "zstart"));
-        real_t boxsize  = cf_.get_value<double>("setup", "BoxLength");
-        real_t omegab   = pcc->cosmo_param_["Omega_b"];
-        real_t omegam   = pcc->cosmo_param_["Omega_m"];
-        real_t omegal   = pcc->cosmo_param_["Omega_DE"];
+        // real_t astart   = 1.0/(1.0+cf_.get_value<double>("setup", "zstart"));
+        // real_t boxsize  = cf_.get_value<double>("setup", "BoxLength");
+        // real_t omegab   = pcc->cosmo_param_["Omega_b"];
+        // real_t omegam   = pcc->cosmo_param_["Omega_m"];
+        // real_t omegal   = pcc->cosmo_param_["Omega_DE"];
 
         // out_eulerian_   = cf_.get_value_safe<bool>("output", "simbelmyne_out_eulerian", false);
         out_eulerian_ = true;
@@ -71,7 +71,7 @@ public:
     void write_grid_data(const Grid_FFT<real_t> &g, const cosmo_species &s, const fluid_component &c );
 };
 
-std::string generic_output_plugin::get_field_name( const cosmo_species &s, const fluid_component &c )
+std::string simbelmyne_output_plugin::get_field_name( const cosmo_species &s, const fluid_component &c )
 {
 	std::string field_name;
 	switch( s ){
@@ -127,16 +127,16 @@ void simbelmyne_output_plugin::add_simbelmyne_metadata( const std::string &fname
     int N1=N0, N2=N0;
     int rank = 1;
 
-    HDFWriteGroupAttribute<double>(file_id, "info/scalars", "L0", L0);
-    HDFWriteGroupAttribute<double>(file_id, "info/scalars", "L1", L1);
-    HDFWriteGroupAttribute<double>(file_id, "info/scalars", "L2", L2);
-    HDFWriteGroupAttribute<double>(file_id, "info/scalars", "corner0", corner0);
-    HDFWriteGroupAttribute<double>(file_id, "info/scalars", "corner1", corner1);
-    HDFWriteGroupAttribute<double>(file_id, "info/scalars", "corner2", corner2);
-    HDFWriteGroupAttribute<int>(file_id, "info/scalars", "N0", N0);
-    HDFWriteGroupAttribute<int>(file_id, "info/scalars", "N1", N1);
-    HDFWriteGroupAttribute<int>(file_id, "info/scalars", "N2", N2);
-    HDFWriteGroupAttribute<int>(file_id, "info/scalars", "rank", rank);
+    HDFWriteGroupAttribute<double>(fname, "info/scalars", "L0", L0);
+    HDFWriteGroupAttribute<double>(fname, "info/scalars", "L1", L1);
+    HDFWriteGroupAttribute<double>(fname, "info/scalars", "L2", L2);
+    HDFWriteGroupAttribute<double>(fname, "info/scalars", "corner0", corner0);
+    HDFWriteGroupAttribute<double>(fname, "info/scalars", "corner1", corner1);
+    HDFWriteGroupAttribute<double>(fname, "info/scalars", "corner2", corner2);
+    HDFWriteGroupAttribute<int>(fname, "info/scalars", "N0", N0);
+    HDFWriteGroupAttribute<int>(fname, "info/scalars", "N1", N1);
+    HDFWriteGroupAttribute<int>(fname, "info/scalars", "N2", N2);
+    HDFWriteGroupAttribute<int>(fname, "info/scalars", "rank", rank);
 }
 
 void simbelmyne_output_plugin::move_dataset_in_hdf5( const std::string &fname, const std::string &dset_name, const std::string &group_name )
@@ -151,7 +151,7 @@ void simbelmyne_output_plugin::move_dataset_in_hdf5( const std::string &fname, c
     }
 
     // Open the dataset provided by the user
-    dataset_id = H5Dopen(file_id, dset_name.c_str(), H5P_DEFAULT);
+    dataset_id = H5Dopen(file_id, dset_name.c_str());
     if (dataset_id < 0) {
         fprintf(stderr, "Error: Unable to open dataset %s\n", dset_name.c_str());
         H5Fclose(file_id);
@@ -160,7 +160,7 @@ void simbelmyne_output_plugin::move_dataset_in_hdf5( const std::string &fname, c
 
     // Create the target group "/scalars" if it doesn't exist
     if (!H5Lexists(file_id, group_name.c_str(), H5P_DEFAULT)) {
-        new_group_id = H5Gcreate(file_id, group_name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        new_group_id = H5Gcreate(file_id, group_name.c_str(), H5P_DEFAULT);
         if (new_group_id < 0) {
             fprintf(stderr, "Error: Unable to create group %s\n", group_name.c_str());
             H5Dclose(dataset_id);
