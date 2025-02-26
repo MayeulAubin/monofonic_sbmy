@@ -66,7 +66,13 @@ enum class fluid_component
   dx,
   dy,
   dz,
-  mass
+  mass,
+  phi,
+  phi2,
+  phi3,
+  A1,
+  A2,
+  A3,
 };
 enum class cosmo_species
 {

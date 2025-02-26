@@ -546,21 +546,21 @@ int run( config_file& the_config )
         music::ilog << std::setw(70) << std::setfill(' ') << std::right << "took : " << std::setw(8) << get_wtime() - wtime << "s" << std::endl;
     }
 
-    ///... scale all potentials with respective growth factors
-    phi *= g1;
+    // ///... scale all potentials with respective growth factors
+    // phi *= g1;
 
-    if (LPTorder > 1)
-    {
-        phi2 *= g2;
-    }
+    // if (LPTorder > 1)
+    // {
+    //     phi2 *= g2;
+    // }
     
-    if (LPTorder > 2)
-    {
-        phi3 *= g3;
-        (*A3[0]) *= g3c;
-        (*A3[1]) *= g3c;
-        (*A3[2]) *= g3c;
-    }
+    // if (LPTorder > 2)
+    // {
+    //     phi3 *= g3;
+    //     (*A3[0]) *= g3c;
+    //     (*A3[1]) *= g3c;
+    //     (*A3[2]) *= g3c;
+    // }
 
     music::ilog << "-------------------------------------------------------------------------------" << std::endl;
 
@@ -789,6 +789,22 @@ int run( config_file& the_config )
                     fluid_component fc = (idim==0)? fluid_component::vx : ((idim==1)? fluid_component::vy : fluid_component::vz );
                     the_output_plugin->write_grid_data( tmp, this_species, fc );
                 }
+
+                //======================================================================
+                // write phi, phi2, phi3
+                //======================================================================
+                the_output_plugin->write_grid_data( phi, this_species, fluid_component::phi );
+                if( LPTorder > 1 ){
+                    the_output_plugin->write_grid_data( phi2, this_species, fluid_component::phi2 );
+                }
+                if( LPTorder > 2 ){
+                    the_output_plugin->write_grid_data( phi3, this_species, fluid_component::phi3 );
+                    for( int idim=0; idim<3; ++idim ){
+                        fluid_component fc = (idim==0)? fluid_component::A1 : ((idim==1)? fluid_component::A2 : fluid_component::A3 );
+                        the_output_plugin->write_grid_data( *A3[idim], this_species, fc );
+                    }
+                }
+
             }
 
             if( the_output_plugin->write_species_as( this_species ) == output_type::particles 
