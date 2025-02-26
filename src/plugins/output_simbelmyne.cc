@@ -19,36 +19,8 @@ public:
     explicit simbelmyne_output_plugin(config_file &cf, std::unique_ptr<cosmology::calculator> &pcc )
     : output_plugin(cf, pcc, "Simbelmyne HDF5")
     {
-        // real_t astart   = 1.0/(1.0+cf_.get_value<double>("setup", "zstart"));
-        // real_t boxsize  = cf_.get_value<double>("setup", "BoxLength");
-        // real_t omegab   = pcc->cosmo_param_["Omega_b"];
-        // real_t omegam   = pcc->cosmo_param_["Omega_m"];
-        // real_t omegal   = pcc->cosmo_param_["Omega_DE"];
-
         // out_eulerian_   = cf_.get_value_safe<bool>("output", "simbelmyne_out_eulerian", false);
         out_eulerian_ = true;
-
-        if( CONFIG::MPI_task_rank == 0 )
-        {
-            unlink(fname_.c_str());
-            HDFCreateFile( fname_ );
-            // // Previous header from output_generic.cc
-            // HDFCreateGroup( fname_, "Header" );
-            // HDFWriteGroupAttribute<double>( fname_, "Header", "Boxsize", boxsize );
-            // HDFWriteGroupAttribute<double>( fname_, "Header", "astart", astart );
-            // HDFWriteGroupAttribute<double>( fname_, "Header", "Omega_b", omegab );
-            // HDFWriteGroupAttribute<double>( fname_, "Header", "Omega_m", omegam );
-            // HDFWriteGroupAttribute<double>( fname_, "Header", "Omega_L", omegal );
-
-            // Simbelmyne header
-            HDFCreateGroup( fname_, "info/scalars" );
-            add_simbelmyne_metadata(fname_);
-
-        }
-
-#if defined(USE_MPI)
-        MPI_Barrier( MPI_COMM_WORLD );
-#endif
     }
 
     output_type write_species_as( const cosmo_species &s ) const
@@ -189,11 +161,26 @@ void simbelmyne_output_plugin::write_grid_data(const Grid_FFT<real_t> &g, const 
 {
     std::string field_name = "field";
     std::string file_subname = this->get_field_name( s, c );
-    std::string file_name = fname_ + file_subname;
+    std::string file_name = fname_ + file_subname + ".h5";
 
-    
+    if( CONFIG::MPI_task_rank == 0 )
+    {
+        HDFCreateFile( file_name );
+        // Simbelmyne header
+        HDFCreateGroup( fname_, "info/scalars" );
+        add_simbelmyne_metadata(fname_);
+    }
+
+    #if defined(USE_MPI)
+        MPI_Barrier( MPI_COMM_WORLD );
+    #endif
+
     // Write the dataset
     g.Write_to_HDF5(file_name, field_name);
+
+    #if defined(USE_MPI)
+        MPI_Barrier( MPI_COMM_WORLD );
+    #endif
 
     if( CONFIG::MPI_task_rank == 0 )
     {

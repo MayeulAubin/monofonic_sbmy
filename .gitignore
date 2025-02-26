@@ -12,3 +12,7 @@ src/Makefile
 external/panphasia/rand_base.mod
 external/panphasia/rand_int.mod
 external/panphasia/rand.mod
+
+example_*
+**.h5
+**.hdf5
