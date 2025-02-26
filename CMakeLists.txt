@@ -212,6 +212,8 @@ configure_file(
 
 ########################################################################################################################
 # executable and linking
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_INSTALL_RPATH "/home/aubin/miniforge3/envs/SBMY/lib")
 add_executable(${PRGNAME} ${SOURCES} ${PLUGINS})
 # target_setup_class(${PRGNAME})
 
