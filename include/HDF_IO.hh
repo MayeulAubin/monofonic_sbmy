@@ -89,8 +89,6 @@ inline void HDFCreateFile( std::string Filename )
 {
   hid_t HDF_FileID;
   HDF_FileID = H5Fcreate( Filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT );
-  if( HDF_FileID < 0 )
-    music::elog << "Unable to open file " << Filename << std::endl;
   H5Fclose( HDF_FileID );
 }
 

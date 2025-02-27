@@ -8,8 +8,9 @@ class simbelmyne_output_plugin : public output_plugin
 {
 private:
     std::string get_field_name( const cosmo_species &s, const fluid_component &c );
+    template< typename T > void write_header_attribute( const std::string Filename, const std::string ObjName, const T &Data );
     void add_simbelmyne_metadata( const std::string &fname );
-    void move_dataset_in_hdf5( const std::string &fname, const std::string &dset_name, const std::string &group_name );
+    void move_dataset_in_hdf5( const std::string &fname, const std::string &src_dset_name, const std::string &group_name, const std::string &tg_dset_name );
 
 protected:
     bool out_eulerian_;
@@ -42,6 +43,8 @@ public:
 
     void write_grid_data(const Grid_FFT<real_t> &g, const cosmo_species &s, const fluid_component &c );
 };
+
+
 
 std::string simbelmyne_output_plugin::get_field_name( const cosmo_species &s, const fluid_component &c )
 {
@@ -90,6 +93,21 @@ std::string simbelmyne_output_plugin::get_field_name( const cosmo_species &s, co
 	return field_name;
 }
 
+
+template< typename T > 
+void simbelmyne_output_plugin::write_header_attribute( const std::string Filename, const std::string ObjName, const T &Data )
+{
+    hid_t dataspace_id, attribute_id, HDF_FileID, HDF_DatatypeID;
+    HDF_DatatypeID = GetDataType<T>();  // Get the HDF5 datatype for the template type
+    HDF_FileID = H5Fopen( Filename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT );  
+    dataspace_id = H5Screate(H5S_SCALAR);
+    attribute_id = H5Acreate2(HDF_FileID, ObjName.c_str(), HDF_DatatypeID, dataspace_id, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(attribute_id, HDF_DatatypeID, &Data);
+    H5Aclose(attribute_id);
+    H5Sclose(dataspace_id);
+    H5Fclose( HDF_FileID ); 
+}
+
 void simbelmyne_output_plugin::add_simbelmyne_metadata( const std::string &fname )
 {
     double L0 = cf_.get_value<double>("setup", "BoxLength");
@@ -98,34 +116,36 @@ void simbelmyne_output_plugin::add_simbelmyne_metadata( const std::string &fname
     int N0 = cf_.get_value<int>("setup", "GridRes");
     int N1=N0, N2=N0;
     int rank = 1;
+    double time = 1.0/(1.0+cf_.get_value<double>("setup", "zstart"));
 
-    HDFWriteGroupAttribute<double>(fname, "info/scalars", "L0", L0);
-    HDFWriteGroupAttribute<double>(fname, "info/scalars", "L1", L1);
-    HDFWriteGroupAttribute<double>(fname, "info/scalars", "L2", L2);
-    HDFWriteGroupAttribute<double>(fname, "info/scalars", "corner0", corner0);
-    HDFWriteGroupAttribute<double>(fname, "info/scalars", "corner1", corner1);
-    HDFWriteGroupAttribute<double>(fname, "info/scalars", "corner2", corner2);
-    HDFWriteGroupAttribute<int>(fname, "info/scalars", "N0", N0);
-    HDFWriteGroupAttribute<int>(fname, "info/scalars", "N1", N1);
-    HDFWriteGroupAttribute<int>(fname, "info/scalars", "N2", N2);
-    HDFWriteGroupAttribute<int>(fname, "info/scalars", "rank", rank);
+    write_header_attribute<double>(fname, "/info/scalars/L0", L0);
+    write_header_attribute<double>(fname, "/info/scalars/L1", L1);
+    write_header_attribute<double>(fname, "/info/scalars/L2", L2);
+    write_header_attribute<double>(fname, "/info/scalars/corner0", corner0);
+    write_header_attribute<double>(fname, "/info/scalars/corner1", corner1);
+    write_header_attribute<double>(fname, "/info/scalars/corner2", corner2);
+    write_header_attribute<double>(fname, "/info/scalars/time", time);
+    write_header_attribute<int>(fname, "/info/scalars/N0", N0);
+    write_header_attribute<int>(fname, "/info/scalars/N1", N1);
+    write_header_attribute<int>(fname, "/info/scalars/N2", N2);
+    write_header_attribute<int>(fname, "/info/scalars/rank", rank);
 }
 
-void simbelmyne_output_plugin::move_dataset_in_hdf5( const std::string &fname, const std::string &dset_name, const std::string &group_name )
+void simbelmyne_output_plugin::move_dataset_in_hdf5( const std::string &fname, const std::string &src_dset_name, const std::string &group_name, const std::string &tg_dset_name )
 {
     hid_t file_id, dataset_id, new_group_id;
 
     // Open the existing HDF5 file
     file_id = H5Fopen(fname.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
     if (file_id < 0) {
-        music::elog << "Error: Unable to open file " << fname << std::endl;
+        music::elog << "Unable to open file " << fname << std::endl;
         return;
     }
 
     // Open the dataset provided by the user
-    dataset_id = H5Dopen(file_id, dset_name.c_str());
+    dataset_id = H5Dopen(file_id, src_dset_name.c_str());
     if (dataset_id < 0) {
-        music::elog << "Error: Unable to open dataset " << dset_name << std::endl;
+        music::elog << "Unable to open dataset " << src_dset_name << std::endl;
         H5Fclose(file_id);
         return;
     }
@@ -135,7 +155,7 @@ void simbelmyne_output_plugin::move_dataset_in_hdf5( const std::string &fname, c
     if (!H5Lexists(file_id, group_name.c_str(), H5P_DEFAULT)) {
         new_group_id = H5Gcreate(file_id, group_name.c_str(), H5P_DEFAULT);
         if (new_group_id < 0) {
-            music::elog << "Error: Unable to create goup " << group_name << std::endl;
+            music::elog << "Unable to create goup " << group_name << std::endl;
             H5Fclose(file_id);
             return;
         }
@@ -143,8 +163,8 @@ void simbelmyne_output_plugin::move_dataset_in_hdf5( const std::string &fname, c
     }
 
     // Move the dataset to "/scalars/field"
-    if (H5Lmove(file_id, dset_name.c_str(), file_id, group_name.c_str(), H5P_DEFAULT, H5P_DEFAULT) < 0) {
-        music::elog << "Error: Unable to move dataset " << dset_name << " to " << group_name << std::endl;
+    if (H5Lmove(file_id, src_dset_name.c_str(), file_id, (group_name+"/"+tg_dset_name).c_str(), H5P_DEFAULT, H5P_DEFAULT) < 0) {
+        music::elog << "Unable to move dataset " << src_dset_name << " to " << (group_name+"/"+tg_dset_name) << std::endl;
         H5Fclose(file_id);
         return;
     }
@@ -165,7 +185,8 @@ void simbelmyne_output_plugin::write_grid_data(const Grid_FFT<real_t> &g, const 
     {
         HDFCreateFile( file_name );
         // Simbelmyne header
-        HDFCreateGroup( file_name, "info/scalars" );
+        HDFCreateGroup( file_name, "info" );
+        HDFCreateSubGroup( file_name, "info", "scalars" );
         add_simbelmyne_metadata(file_name);
     }
 
@@ -183,7 +204,8 @@ void simbelmyne_output_plugin::write_grid_data(const Grid_FFT<real_t> &g, const 
     if( CONFIG::MPI_task_rank == 0 )
     {
         // Move dataset to "/scalars/field"
-        move_dataset_in_hdf5(file_name, field_name, "/scalars/field");
+        HDFCreateGroup( file_name, "scalars" );
+        move_dataset_in_hdf5(file_name, field_name, "scalars", "field");
     }
 
 
