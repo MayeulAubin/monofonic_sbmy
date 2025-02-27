@@ -767,29 +767,29 @@ int run( config_file& the_config )
                 rho.Write_PowerSpectrum(the_config.get_path_relative_to_config("input_powerspec_sampled_evolved_semiclassical.txt"));
                 rho.FourierTransformBackward();
                 
-                //======================================================================
-                // compute  v
-                //======================================================================
-                Grid_FFT<ccomplex_t> grad_psi({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen});
-                const real_t vunit = Dplus0 * vfac / boxlen * the_output_plugin->velocity_unit();
-                for( int idim=0; idim<3; ++idim )
-                {
-                    grad_psi.FourierTransformBackward(false);
-                    grad_psi.copy_from(psi);
-                    grad_psi.FourierTransformForward();
-                    grad_psi.apply_function_k_dep([&](auto x, auto k) {
-                        return x * ccomplex_t(0.0,k[idim]);
-                    });
-                    grad_psi.FourierTransformBackward();
+                // //======================================================================
+                // // compute  v
+                // //======================================================================
+                // Grid_FFT<ccomplex_t> grad_psi({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen});
+                // const real_t vunit = Dplus0 * vfac / boxlen * the_output_plugin->velocity_unit();
+                // for( int idim=0; idim<3; ++idim )
+                // {
+                //     grad_psi.FourierTransformBackward(false);
+                //     grad_psi.copy_from(psi);
+                //     grad_psi.FourierTransformForward();
+                //     grad_psi.apply_function_k_dep([&](auto x, auto k) {
+                //         return x * ccomplex_t(0.0,k[idim]);
+                //     });
+                //     grad_psi.FourierTransformBackward();
                     
-                    tmp.FourierTransformBackward(false);
-                    tmp.assign_function_of_grids_r([&](auto ppsi, auto pgrad_psi, auto prho) {
-                            return vunit * std::real((std::conj(ppsi) * pgrad_psi - ppsi * std::conj(pgrad_psi)) / ccomplex_t(0.0, 2.0 / hbar)/real_t(1.0+prho));
-                        }, psi, grad_psi, rho);
+                //     tmp.FourierTransformBackward(false);
+                //     tmp.assign_function_of_grids_r([&](auto ppsi, auto pgrad_psi, auto prho) {
+                //             return vunit * std::real((std::conj(ppsi) * pgrad_psi - ppsi * std::conj(pgrad_psi)) / ccomplex_t(0.0, 2.0 / hbar)/real_t(1.0+prho));
+                //         }, psi, grad_psi, rho);
 
-                    fluid_component fc = (idim==0)? fluid_component::vx : ((idim==1)? fluid_component::vy : fluid_component::vz );
-                    the_output_plugin->write_grid_data( tmp, this_species, fc );
-                }
+                //     fluid_component fc = (idim==0)? fluid_component::vx : ((idim==1)? fluid_component::vy : fluid_component::vz );
+                //     the_output_plugin->write_grid_data( tmp, this_species, fc );
+                // }
 
                 //======================================================================
                 // write phi, phi2, phi3
@@ -799,9 +799,11 @@ int run( config_file& the_config )
                     the_output_plugin->write_grid_data( phi2, this_species, fluid_component::phi2 );
                 }
                 if( LPTorder > 2 ){
+                    phi3.FourierTransformBackward();
                     the_output_plugin->write_grid_data( phi3, this_species, fluid_component::phi3 );
                     for( int idim=0; idim<3; ++idim ){
                         fluid_component fc = (idim==0)? fluid_component::A1 : ((idim==1)? fluid_component::A2 : fluid_component::A3 );
+                        A3[idim]->FourierTransformBackward();
                         the_output_plugin->write_grid_data( *A3[idim], this_species, fc );
                     }
                 }
