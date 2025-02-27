@@ -167,8 +167,8 @@ void simbelmyne_output_plugin::write_grid_data(const Grid_FFT<real_t> &g, const 
     {
         HDFCreateFile( file_name );
         // Simbelmyne header
-        HDFCreateGroup( fname_, "info/scalars" );
-        add_simbelmyne_metadata(fname_);
+        HDFCreateGroup( file_name, "info/scalars" );
+        add_simbelmyne_metadata(file_name);
     }
 
     #if defined(USE_MPI)

@@ -547,21 +547,21 @@ int run( config_file& the_config )
         music::ilog << std::setw(70) << std::setfill(' ') << std::right << "took : " << std::setw(8) << get_wtime() - wtime << "s" << std::endl;
     }
 
-    // ///... scale all potentials with respective growth factors
-    // phi *= g1;
+    ///... scale all potentials with respective growth factors
+    phi *= g1;
 
-    // if (LPTorder > 1)
-    // {
-    //     phi2 *= g2;
-    // }
+    if (LPTorder > 1)
+    {
+        phi2 *= g2;
+    }
     
-    // if (LPTorder > 2)
-    // {
-    //     phi3 *= g3;
-    //     (*A3[0]) *= g3c;
-    //     (*A3[1]) *= g3c;
-    //     (*A3[2]) *= g3c;
-    // }
+    if (LPTorder > 2)
+    {
+        phi3 *= g3;
+        (*A3[0]) *= g3c;
+        (*A3[1]) *= g3c;
+        (*A3[2]) *= g3c;
+    }
 
     music::ilog << "-------------------------------------------------------------------------------" << std::endl;
 
