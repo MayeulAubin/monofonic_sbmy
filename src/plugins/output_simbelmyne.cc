@@ -118,14 +118,14 @@ void simbelmyne_output_plugin::move_dataset_in_hdf5( const std::string &fname, c
     // Open the existing HDF5 file
     file_id = H5Fopen(fname.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
     if (file_id < 0) {
-        fprintf(stderr, "Error: Unable to open file %s\n", fname.c_str());
+        music::elog << "Error: Unable to open file " << fname << std::endl;
         return;
     }
 
     // Open the dataset provided by the user
     dataset_id = H5Dopen(file_id, dset_name.c_str());
     if (dataset_id < 0) {
-        fprintf(stderr, "Error: Unable to open dataset %s\n", dset_name.c_str());
+        music::elog << "Error: Unable to open dataset " << dset_name << std::endl;
         H5Fclose(file_id);
         return;
     }
@@ -134,7 +134,7 @@ void simbelmyne_output_plugin::move_dataset_in_hdf5( const std::string &fname, c
     if (!H5Lexists(file_id, group_name.c_str(), H5P_DEFAULT)) {
         new_group_id = H5Gcreate(file_id, group_name.c_str(), H5P_DEFAULT);
         if (new_group_id < 0) {
-            fprintf(stderr, "Error: Unable to create group %s\n", group_name.c_str());
+            music::elog << "Error: Unable to open dataset " << group_name << std::endl;
             H5Dclose(dataset_id);
             H5Fclose(file_id);
             return;
@@ -144,7 +144,7 @@ void simbelmyne_output_plugin::move_dataset_in_hdf5( const std::string &fname, c
 
     // Move the dataset to "/scalars/field"
     if (H5Lmove(file_id, dset_name.c_str(), file_id, group_name.c_str(), H5P_DEFAULT, H5P_DEFAULT) < 0) {
-        fprintf(stderr, "Error: Unable to move dataset %s to %s\n", dset_name.c_str(), group_name.c_str());
+        music::elog << "Error: Unable to move dataset " << dset_name << " to " << group_name << std::endl;
         H5Dclose(dataset_id);
         H5Fclose(file_id);
         return;
