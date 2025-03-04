@@ -763,9 +763,11 @@ int run( config_file& the_config )
                     return pp;
                 }, psi);
 
+                rho /= g1;
                 the_output_plugin->write_grid_data( rho, this_species, fluid_component::density );
-                rho.Write_PowerSpectrum(the_config.get_path_relative_to_config("input_powerspec_sampled_evolved_semiclassical.txt"));
-                rho.FourierTransformBackward();
+                rho *= g1;
+                // rho.Write_PowerSpectrum(the_config.get_path_relative_to_config("input_powerspec_sampled_evolved_semiclassical.txt"));
+                // rho.FourierTransformBackward();
                 
                 // //======================================================================
                 // // compute  v
