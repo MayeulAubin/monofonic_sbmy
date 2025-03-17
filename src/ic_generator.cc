@@ -796,9 +796,9 @@ int run( config_file& the_config )
                 //======================================================================
                 // write phi, phi2, phi3
                 //======================================================================
-                phi /= g1;
+                phi /= -g1; // There is a minus sign appearing here in order to match the standard output of sbmy but idk why
                 the_output_plugin->write_grid_data( phi, this_species, fluid_component::phi );
-                phi *= g1;
+                phi *= -g1;
                 if( LPTorder > 1 ){
                     phi2 /= g2;
                     the_output_plugin->write_grid_data( phi2, this_species, fluid_component::phi2 );
