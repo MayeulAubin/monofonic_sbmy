@@ -105,6 +105,8 @@ int run( config_file& the_config )
     //! starting redshift
     const real_t zstart = the_config.get_value<double>("setup", "zstart");
 
+    music::ilog << "GridRes: " << ngrid << "   , BoxLength: " << boxlen << "   , zstart:" << zstart << std::endl << std::flush;
+
     //--------------------------------------------------------------------------------------------------------
     //! order of the LPT approximation 
     const int LPTorder = the_config.get_value_safe<double>("setup","LPTorder",100);
@@ -410,7 +412,7 @@ int run( config_file& the_config )
                 return ComplexType(std::pow(kmod/k0, nf)) * delta_power;
             }, delta_power);
         }
- 
+
         delta_power.FourierTransformBackward();
         phi.FourierTransformBackward();
         if (fnl != 0)
@@ -674,98 +676,98 @@ int run( config_file& the_config )
             //if( the_output_plugin->write_species_as( cosmo_species::dm ) == output_type::field_eulerian ){
             if( the_output_plugin->write_species_as(this_species) == output_type::field_eulerian )
             {
-                //======================================================================
-                // use QPT to get density and velocity fields
-                //======================================================================
-                Grid_FFT<ccomplex_t> psi({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen});
-                Grid_FFT<real_t> rho({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen});
+                // //======================================================================
+                // // use QPT to get density and velocity fields
+                // //======================================================================
+                // Grid_FFT<ccomplex_t> psi({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen});
+                // Grid_FFT<real_t> rho({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen});
 
-                //======================================================================
-                // initialise rho
-                //======================================================================
-                wnoise.FourierTransformForward();
-                rho.FourierTransformForward(false);
-                rho.assign_function_of_grids_kdep( [&]( auto k, auto wn ){
-                    return wn * the_cosmo_calc->get_amplitude_delta_bc(k.norm(), false);
-                }, wnoise );
-                rho.zero_DC_mode();
-                rho.FourierTransformBackward();
+                // //======================================================================
+                // // initialise rho
+                // //======================================================================
+                // wnoise.FourierTransformForward();
+                // rho.FourierTransformForward(false);
+                // rho.assign_function_of_grids_kdep( [&]( auto k, auto wn ){
+                //     return wn * the_cosmo_calc->get_amplitude_delta_bc(k.norm(), false);
+                // }, wnoise );
+                // rho.zero_DC_mode();
+                // rho.FourierTransformBackward();
                 
-                rho.apply_function_r( [&]( auto prho ){
-                    return std::sqrt( 1.0 + C_species * prho );
-                });
+                // rho.apply_function_r( [&]( auto prho ){
+                //     return std::sqrt( 1.0 + C_species * prho );
+                // });
 
-                //======================================================================
-                // initialise psi = exp(i Phi(1)/hbar)
-                //======================================================================
-                phi.FourierTransformBackward();
+                // //======================================================================
+                // // initialise psi = exp(i Phi(1)/hbar)
+                // //======================================================================
+                // phi.FourierTransformBackward();
 
-                real_t maxdphi = -1.0;
+                // real_t maxdphi = -1.0;
 
-                #pragma omp parallel for reduction(max:maxdphi)
-                for( size_t i=0; i<phi.size(0)-1; ++i ){
-                    size_t ir = (i+1)%phi.size(0);
-                    for( size_t j=0; j<phi.size(1); ++j ){
-                        size_t jr = (j+1)%phi.size(1);    
-                        for( size_t k=0; k<phi.size(2); ++k ){
-                            size_t kr = (k+1)%phi.size(2);
-                            auto phic = phi.relem(i,j,k);
+                // #pragma omp parallel for reduction(max:maxdphi)
+                // for( size_t i=0; i<phi.size(0)-1; ++i ){
+                //     size_t ir = (i+1)%phi.size(0);
+                //     for( size_t j=0; j<phi.size(1); ++j ){
+                //         size_t jr = (j+1)%phi.size(1);    
+                //         for( size_t k=0; k<phi.size(2); ++k ){
+                //             size_t kr = (k+1)%phi.size(2);
+                //             auto phic = phi.relem(i,j,k);
 
-                            auto dphixr = std::fabs(phi.relem(ir,j,k) - phic);
-                            auto dphiyr = std::fabs(phi.relem(i,jr,k) - phic);
-                            auto dphizr = std::fabs(phi.relem(i,j,kr) - phic);
+                //             auto dphixr = std::fabs(phi.relem(ir,j,k) - phic);
+                //             auto dphiyr = std::fabs(phi.relem(i,jr,k) - phic);
+                //             auto dphizr = std::fabs(phi.relem(i,j,kr) - phic);
                             
-                            maxdphi = std::max(maxdphi,std::max(dphixr,std::max(dphiyr,dphizr)));
-                        }
-                    }
-                }
-                #if defined(USE_MPI)
-                    real_t local_maxdphi = maxdphi;
-                    MPI_Allreduce( &local_maxdphi, &maxdphi, 1, MPI::get_datatype<real_t>(), MPI_MAX, MPI_COMM_WORLD );
-                #endif
-                const real_t hbar_safefac = 1.01;
-                const real_t hbar = maxdphi / M_PI / Dplus0 * hbar_safefac;
-                music::ilog << "Semiclassical PT : hbar = " << hbar << " (limited by initial potential, safety=" << hbar_safefac << ")." << std::endl;
+                //             maxdphi = std::max(maxdphi,std::max(dphixr,std::max(dphiyr,dphizr)));
+                //         }
+                //     }
+                // }
+                // #if defined(USE_MPI)
+                //     real_t local_maxdphi = maxdphi;
+                //     MPI_Allreduce( &local_maxdphi, &maxdphi, 1, MPI::get_datatype<real_t>(), MPI_MAX, MPI_COMM_WORLD );
+                // #endif
+                // const real_t hbar_safefac = 1.01;
+                // const real_t hbar = maxdphi / M_PI / Dplus0 * hbar_safefac;
+                // music::ilog << "Semiclassical PT : hbar = " << hbar << " (limited by initial potential, safety=" << hbar_safefac << ")." << std::endl;
                 
-                if( LPTorder == 1 ){
-                    psi.assign_function_of_grids_r([hbar,Dplus0]( real_t pphi, real_t prho ){
-                        return prho * std::exp(ccomplex_t(0.0,1.0/hbar) * (pphi / Dplus0)); // divide by Dplus since phi already contains it
-                    }, phi, rho );
-                }else if( LPTorder >= 2 ){
-                    phi2.FourierTransformBackward();
-                    // we don't have a 1/2 in the Veff term because pre-factor is already 3/7
-                    psi.assign_function_of_grids_r([hbar,Dplus0]( real_t pphi, real_t pphi2, real_t prho ){
-                        return prho * std::exp(ccomplex_t(0.0,1.0/hbar) * (pphi + pphi2) / Dplus0);
-                    }, phi, phi2, rho );
-                }
+                // if( LPTorder == 1 ){
+                //     psi.assign_function_of_grids_r([hbar,Dplus0]( real_t pphi, real_t prho ){
+                //         return prho * std::exp(ccomplex_t(0.0,1.0/hbar) * (pphi / Dplus0)); // divide by Dplus since phi already contains it
+                //     }, phi, rho );
+                // }else if( LPTorder >= 2 ){
+                //     phi2.FourierTransformBackward();
+                //     // we don't have a 1/2 in the Veff term because pre-factor is already 3/7
+                //     psi.assign_function_of_grids_r([hbar,Dplus0]( real_t pphi, real_t pphi2, real_t prho ){
+                //         return prho * std::exp(ccomplex_t(0.0,1.0/hbar) * (pphi + pphi2) / Dplus0);
+                //     }, phi, phi2, rho );
+                // }
 
-                //======================================================================
-                // evolve wave-function (one drift step) psi = psi *exp(-i hbar *k^2 dt / 2)
-                //======================================================================
-                psi.FourierTransformForward();
-                psi.apply_function_k_dep([hbar,Dplus0]( auto epsi, auto k ){
-                    auto k2 = k.norm_squared();
-                    return epsi * std::exp( - ccomplex_t(0.0,0.5)*hbar* k2 * Dplus0);
-                });
-                psi.FourierTransformBackward();
+                // //======================================================================
+                // // evolve wave-function (one drift step) psi = psi *exp(-i hbar *k^2 dt / 2)
+                // //======================================================================
+                // psi.FourierTransformForward();
+                // psi.apply_function_k_dep([hbar,Dplus0]( auto epsi, auto k ){
+                //     auto k2 = k.norm_squared();
+                //     return epsi * std::exp( - ccomplex_t(0.0,0.5)*hbar* k2 * Dplus0);
+                // });
+                // psi.FourierTransformBackward();
 
-                if( LPTorder >= 2 ){
-                    psi.assign_function_of_grids_r([&](auto ppsi, auto pphi2) {
-                        return ppsi * std::exp(ccomplex_t(0.0,1.0/hbar) * (pphi2) / Dplus0);
-                    }, psi, phi2);
-                }
+                // if( LPTorder >= 2 ){
+                //     psi.assign_function_of_grids_r([&](auto ppsi, auto pphi2) {
+                //         return ppsi * std::exp(ccomplex_t(0.0,1.0/hbar) * (pphi2) / Dplus0);
+                //     }, psi, phi2);
+                // }
 
-                //======================================================================
-                // compute rho
-                //======================================================================
-                rho.assign_function_of_grids_r([&]( auto p ){
-                    auto pp = std::real(p)*std::real(p) + std::imag(p)*std::imag(p) - 1.0;
-                    return pp;
-                }, psi);
+                // //======================================================================
+                // // compute rho
+                // //======================================================================
+                // rho.assign_function_of_grids_r([&]( auto p ){
+                //     auto pp = std::real(p)*std::real(p) + std::imag(p)*std::imag(p) - 1.0;
+                //     return pp;
+                // }, psi);
 
-                rho /= g1;
-                the_output_plugin->write_grid_data( rho, this_species, fluid_component::density );
-                rho *= g1;
+                // rho /= g1;
+                // the_output_plugin->write_grid_data( rho, this_species, fluid_component::density );
+                // rho *= g1;
                 // rho.Write_PowerSpectrum(the_config.get_path_relative_to_config("input_powerspec_sampled_evolved_semiclassical.txt"));
                 // rho.FourierTransformBackward();
                 
@@ -794,12 +796,26 @@ int run( config_file& the_config )
                 // }
 
                 //======================================================================
-                // write phi, phi2, phi3
+                // write phi, phi2, phi3, delta
                 //======================================================================
+
+                Grid_FFT<real_t> delta({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen}, true);
+                delta.FourierTransformForward(false);
+                phi.FourierTransformForward(false);
+
                 phi /= -g1; // There is a minus sign appearing here in order to match the standard output of sbmy but idk why
+
+                delta.assign_function_of_grids_kdep([&](auto k, auto phi1) {
+                    real_t kkmod = k.norm_squared();
+                    return -phi1*kkmod; // delta = phi*k^2
+                }, phi);
+                music::ilog << "delta assign" << std::endl;
+
+                phi.FourierTransformBackward();
                 the_output_plugin->write_grid_data( phi, this_species, fluid_component::phi );
-                phi *= -g1;
+                phi *= -g1; // Reverting back to the monofonic value
                 if( LPTorder > 1 ){
+                    phi2.FourierTransformBackward();
                     phi2 /= g2;
                     the_output_plugin->write_grid_data( phi2, this_species, fluid_component::phi2 );
                     phi2 *= g2;
@@ -819,6 +835,11 @@ int run( config_file& the_config )
                         *A3[idim] *= g3c;
                     }
                 }
+
+
+                delta.FourierTransformBackward();
+                the_output_plugin->write_grid_data( delta, this_species, fluid_component::density );
+                delta *= g1;
 
             }
 
