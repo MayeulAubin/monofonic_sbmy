@@ -795,8 +795,59 @@ int run( config_file& the_config )
                 //     the_output_plugin->write_grid_data( tmp, this_species, fc );
                 // }
 
+                // //======================================================================
+                // // write phi, phi2, phi3, delta
+                // //======================================================================
+
+                // Grid_FFT<real_t> delta({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen}, true);
+                // delta.FourierTransformForward(false);
+                // phi.FourierTransformForward(false);
+
+                // phi /= -g1; // There is a minus sign appearing here in order to match the standard output of sbmy but idk why
+
+                // delta.assign_function_of_grids_kdep([&](auto k, auto phi1) {
+                //     real_t kkmod = k.norm_squared();
+                //     return -phi1*kkmod; // delta = phi*k^2
+                // }, phi);
+                // music::ilog << "delta assign" << std::endl;
+
+                // phi.FourierTransformBackward();
+                // the_output_plugin->write_grid_data( phi, this_species, fluid_component::phi );
+                // phi *= -g1; // Reverting back to the monofonic value
+                // if( LPTorder > 1 ){
+                //     phi2.FourierTransformBackward();
+                //     phi2 /= g2;
+                //     the_output_plugin->write_grid_data( phi2, this_species, fluid_component::phi2 );
+                //     phi2 *= g2;
+                // }
+                // if( LPTorder > 2 ){
+                //     phi3 /= g3;
+                //     phi3.FourierTransformBackward();
+                //     the_output_plugin->write_grid_data( phi3, this_species, fluid_component::phi3 );
+                //     phi3.FourierTransformForward();
+                //     phi3 *= g3;
+                //     for( int idim=0; idim<3; ++idim ){
+                //         fluid_component fc = (idim==0)? fluid_component::A1 : ((idim==1)? fluid_component::A2 : fluid_component::A3 );
+                //         *A3[idim] /= g3c;
+                //         A3[idim]->FourierTransformBackward();
+                //         the_output_plugin->write_grid_data( *A3[idim], this_species, fc );
+                //         A3[idim]->FourierTransformForward();
+                //         *A3[idim] *= g3c;
+                //     }
+                // }
+
+
+                // delta.FourierTransformBackward();
+                // the_output_plugin->write_grid_data( delta, this_species, fluid_component::density );
+                // delta *= g1;
+
+            }
+
+            if( the_output_plugin->write_species_as( this_species ) == output_type::particles 
+             || the_output_plugin->write_species_as( this_species ) == output_type::field_lagrangian )
+            {
                 //======================================================================
-                // write phi, phi2, phi3, delta
+                // Grid output of phi, phi2, phi3, delta (was added there because I could not both have Eulerian and particles output)
                 //======================================================================
 
                 Grid_FFT<real_t> delta({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen}, true);
@@ -841,11 +892,7 @@ int run( config_file& the_config )
                 the_output_plugin->write_grid_data( delta, this_species, fluid_component::density );
                 delta *= g1;
 
-            }
 
-            if( the_output_plugin->write_species_as( this_species ) == output_type::particles 
-             || the_output_plugin->write_species_as( this_species ) == output_type::field_lagrangian )
-            {
                 //===================================================================================
                 // we store displacements and velocities here if we compute them
                 //===================================================================================
