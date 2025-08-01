@@ -854,7 +854,7 @@ int run( config_file& the_config )
                 delta.FourierTransformForward(false);
                 phi.FourierTransformForward(false);
 
-                phi /= -g1; // There is a minus sign appearing here in order to match the standard output of sbmy but idk why
+                phi /= g1; // There is a minus sign appearing here in order to match the standard output of sbmy but idk why
 
                 delta.assign_function_of_grids_kdep([&](auto k, auto phi1) {
                     real_t kkmod = k.norm_squared();
@@ -864,7 +864,7 @@ int run( config_file& the_config )
 
                 phi.FourierTransformBackward();
                 the_output_plugin->write_grid_data( phi, this_species, fluid_component::phi );
-                phi *= -g1; // Reverting back to the monofonic value
+                phi *= g1; // Reverting back to the monofonic value
                 if( LPTorder > 1 ){
                     phi2.FourierTransformBackward();
                     phi2 /= g2;
