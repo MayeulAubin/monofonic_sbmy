@@ -30,6 +30,7 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}" CACHE STRIN
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}" CACHE STRING "Flags used by the compiler during Debug builds." FORCE)
 set(CMAKE_C_FLAGS_DEBUGSANADD "${CMAKE_CXX_FLAGS_DEBUGSANADD}" CACHE STRING "Flags used by the compiler during Debug builds with Sanitizer for address." FORCE)
 set(CMAKE_C_FLAGS_DEBUGSANUNDEF "${CMAKE_CXX_FLAGS_DEBUGSANUNDEF}" CACHE STRING "Flags used by the compiler during Debug builds with Sanitizer for undefineds." FORCE)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(default_build_type "RelWithDebInfo")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
