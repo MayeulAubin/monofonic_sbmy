@@ -625,20 +625,20 @@ int run( config_file& the_config )
         {
             std::unique_ptr<particle::lattice_generator<Grid_FFT<real_t>>> particle_lattice_generator_ptr;
 
-            // if output plugin wants particles, then we need to store them, along with their IDs
-            if( the_output_plugin->write_species_as( this_species ) == output_type::particles )
-            {
-                // somewhat arbitrarily, start baryon particle IDs from 2**31 if we have 32bit and from 2**56 if we have 64 bits
-                size_t IDoffset = (this_species == cosmo_species::baryon)? ((the_output_plugin->has_64bit_ids())? 1 : 1): 0 ;
+            // // if output plugin wants particles, then we need to store them, along with their IDs
+            // if( the_output_plugin->write_species_as( this_species ) == output_type::particles )
+            // {
+            //     // somewhat arbitrarily, start baryon particle IDs from 2**31 if we have 32bit and from 2**56 if we have 64 bits
+            //     size_t IDoffset = (this_species == cosmo_species::baryon)? ((the_output_plugin->has_64bit_ids())? 1 : 1): 0 ;
 
-                // allocate particle structure and generate particle IDs
-                bool secondary_lattice = (this_species == cosmo_species::baryon &&
-                                        the_output_plugin->write_species_as(this_species) == output_type::particles) ? true : false;
+            //     // allocate particle structure and generate particle IDs
+            //     bool secondary_lattice = (this_species == cosmo_species::baryon &&
+            //                             the_output_plugin->write_species_as(this_species) == output_type::particles) ? true : false;
 
-                particle_lattice_generator_ptr = 
-                std::make_unique<particle::lattice_generator<Grid_FFT<real_t>>>( lattice_type, secondary_lattice, the_output_plugin->has_64bit_reals(), the_output_plugin->has_64bit_ids(), 
-                    bDoBaryons, IDoffset, tmp, the_config );
-            }
+            //     particle_lattice_generator_ptr = 
+            //     std::make_unique<particle::lattice_generator<Grid_FFT<real_t>>>( lattice_type, secondary_lattice, the_output_plugin->has_64bit_reals(), the_output_plugin->has_64bit_ids(), 
+            //         bDoBaryons, IDoffset, tmp, the_config );
+            // }
 
             // set the perturbed particle masses if we have baryons
             if( bDoBaryons && (the_output_plugin->write_species_as( this_species ) == output_type::particles
@@ -893,172 +893,172 @@ int run( config_file& the_config )
                 delta *= g1;
 
 
-                //===================================================================================
-                // we store displacements and velocities here if we compute them
-                //===================================================================================
+                // //===================================================================================
+                // // we store displacements and velocities here if we compute them
+                // //===================================================================================
                 
 
-                bool shifted_lattice = (this_species == cosmo_species::baryon &&
-                                        the_output_plugin->write_species_as(this_species) == output_type::particles) ? true : false;
+                // bool shifted_lattice = (this_species == cosmo_species::baryon &&
+                //                         the_output_plugin->write_species_as(this_species) == output_type::particles) ? true : false;
 
                 
-                grid_interpolate<1,Grid_FFT<real_t>> interp( tmp );
+                // grid_interpolate<1,Grid_FFT<real_t>> interp( tmp );
 
-                phi.FourierTransformForward();
-                if( LPTorder > 1 ){
-                    phi2.FourierTransformForward();
-                }
-                if( LPTorder > 2 ){
-                    phi3.FourierTransformForward();
-                    A3[0]->FourierTransformForward();
-                    A3[1]->FourierTransformForward();
-                    A3[2]->FourierTransformForward();
-                }
-                wnoise.FourierTransformForward();
+                // phi.FourierTransformForward();
+                // if( LPTorder > 1 ){
+                //     phi2.FourierTransformForward();
+                // }
+                // if( LPTorder > 2 ){
+                //     phi3.FourierTransformForward();
+                //     A3[0]->FourierTransformForward();
+                //     A3[1]->FourierTransformForward();
+                //     A3[2]->FourierTransformForward();
+                // }
+                // wnoise.FourierTransformForward();
             
-                // write out positions
-                for( int idim=0; idim<3; ++idim ){
-                    // cyclic rotations of indices
-                    const int idimp = (idim+1)%3, idimpp = (idim+2)%3;
-                    const real_t lunit = the_output_plugin->position_unit();
+                // // write out positions
+                // for( int idim=0; idim<3; ++idim ){
+                //     // cyclic rotations of indices
+                //     const int idimp = (idim+1)%3, idimpp = (idim+2)%3;
+                //     const real_t lunit = the_output_plugin->position_unit();
                     
-                    tmp.FourierTransformForward(false);
+                //     tmp.FourierTransformForward(false);
 
-                    // combine the various LPT potentials into one and take gradient
-                    #pragma omp parallel for
-                    for (size_t i = 0; i < phi.size(0); ++i) {
-                        for (size_t j = 0; j < phi.size(1); ++j) {
-                            for (size_t k = 0; k < phi.size(2); ++k) {
-                                size_t idx = phi.get_idx(i,j,k);
-                                auto phitot = phi.kelem(idx);
+                //     // combine the various LPT potentials into one and take gradient
+                //     #pragma omp parallel for
+                //     for (size_t i = 0; i < phi.size(0); ++i) {
+                //         for (size_t j = 0; j < phi.size(1); ++j) {
+                //             for (size_t k = 0; k < phi.size(2); ++k) {
+                //                 size_t idx = phi.get_idx(i,j,k);
+                //                 auto phitot = phi.kelem(idx);
 
-                                if( LPTorder > 1 ){
-                                    phitot += phi2.kelem(idx);
-                                }
+                //                 if( LPTorder > 1 ){
+                //                     phitot += phi2.kelem(idx);
+                //                 }
 
-                                if( LPTorder > 2 ){
-                                    phitot += phi3.kelem(idx);
-                                }
+                //                 if( LPTorder > 2 ){
+                //                     phitot += phi3.kelem(idx);
+                //                 }
 
-                                tmp.kelem(idx) = lg.gradient(idim,tmp.get_k3(i,j,k)) * phitot;
+                //                 tmp.kelem(idx) = lg.gradient(idim,tmp.get_k3(i,j,k)) * phitot;
 
-                                if( LPTorder > 2 ){
-                                    tmp.kelem(idx) += lg.gradient(idimp,tmp.get_k3(i,j,k)) * A3[idimpp]->kelem(idx) - lg.gradient(idimpp,tmp.get_k3(i,j,k)) * A3[idimp]->kelem(idx);
-                                }
+                //                 if( LPTorder > 2 ){
+                //                     tmp.kelem(idx) += lg.gradient(idimp,tmp.get_k3(i,j,k)) * A3[idimpp]->kelem(idx) - lg.gradient(idimpp,tmp.get_k3(i,j,k)) * A3[idimp]->kelem(idx);
+                //                 }
 
-                                if( the_output_plugin->write_species_as( this_species ) == output_type::particles && lattice_type == particle::lattice_glass){
-                                    tmp.kelem(idx) *= interp.compensation_kernel( tmp.get_k<real_t>(i,j,k) ) ;
-                                }
+                //                 if( the_output_plugin->write_species_as( this_species ) == output_type::particles && lattice_type == particle::lattice_glass){
+                //                     tmp.kelem(idx) *= interp.compensation_kernel( tmp.get_k<real_t>(i,j,k) ) ;
+                //                 }
 
-                                // divide by Lbox, because displacement is in box units for output plugin
-                                tmp.kelem(idx) *=  lunit / boxlen;
-                            }
-                        }
-                    }
-                    tmp.zero_DC_mode();
-                    tmp.FourierTransformBackward();
+                //                 // divide by Lbox, because displacement is in box units for output plugin
+                //                 tmp.kelem(idx) *=  lunit / boxlen;
+                //             }
+                //         }
+                //     }
+                //     tmp.zero_DC_mode();
+                //     tmp.FourierTransformBackward();
 
-                    // if we write particle data, store particle data in particle structure
-                    if( the_output_plugin->write_species_as( this_species ) == output_type::particles )
-                    {
-                        particle_lattice_generator_ptr->set_positions( lattice_type, shifted_lattice, idim, lunit, the_output_plugin->has_64bit_reals(), tmp, the_config );
-                    } 
-                    // otherwise write out the grid data directly to the output plugin
-                    // else if( the_output_plugin->write_species_as( cosmo_species::dm ) == output_type::field_lagrangian )
-                    else if( the_output_plugin->write_species_as( this_species ) == output_type::field_lagrangian )
-                    {
-                        fluid_component fc = (idim==0)? fluid_component::dx : ((idim==1)? fluid_component::dy : fluid_component::dz );
-                        the_output_plugin->write_grid_data( tmp, this_species, fc );
-                    }
-                }
+                //     // if we write particle data, store particle data in particle structure
+                //     if( the_output_plugin->write_species_as( this_species ) == output_type::particles )
+                //     {
+                //         particle_lattice_generator_ptr->set_positions( lattice_type, shifted_lattice, idim, lunit, the_output_plugin->has_64bit_reals(), tmp, the_config );
+                //     } 
+                //     // otherwise write out the grid data directly to the output plugin
+                //     // else if( the_output_plugin->write_species_as( cosmo_species::dm ) == output_type::field_lagrangian )
+                //     else if( the_output_plugin->write_species_as( this_species ) == output_type::field_lagrangian )
+                //     {
+                //         fluid_component fc = (idim==0)? fluid_component::dx : ((idim==1)? fluid_component::dy : fluid_component::dz );
+                //         the_output_plugin->write_grid_data( tmp, this_species, fc );
+                //     }
+                // }
 
-                // write out velocities
-                for( int idim=0; idim<3; ++idim ){
-                    // cyclic rotations of indices
-                    int idimp = (idim+1)%3, idimpp = (idim+2)%3;
-                    const real_t vunit = the_output_plugin->velocity_unit();
+                // // write out velocities
+                // for( int idim=0; idim<3; ++idim ){
+                //     // cyclic rotations of indices
+                //     int idimp = (idim+1)%3, idimpp = (idim+2)%3;
+                //     const real_t vunit = the_output_plugin->velocity_unit();
                     
-                    tmp.FourierTransformForward(false);
+                //     tmp.FourierTransformForward(false);
 
-                    #pragma omp parallel for
-                    for (size_t i = 0; i < phi.size(0); ++i) {
-                        for (size_t j = 0; j < phi.size(1); ++j) {
-                            for (size_t k = 0; k < phi.size(2); ++k) {
-                                size_t idx = phi.get_idx(i,j,k);
+                //     #pragma omp parallel for
+                //     for (size_t i = 0; i < phi.size(0); ++i) {
+                //         for (size_t j = 0; j < phi.size(1); ++j) {
+                //             for (size_t k = 0; k < phi.size(2); ++k) {
+                //                 size_t idx = phi.get_idx(i,j,k);
                                 
-                                auto phitot_v = vfac1 * phi.kelem(idx);
+                //                 auto phitot_v = vfac1 * phi.kelem(idx);
                                 
-                                if( LPTorder > 1 ){
-                                    phitot_v += vfac2 * phi2.kelem(idx);
-                                }
+                //                 if( LPTorder > 1 ){
+                //                     phitot_v += vfac2 * phi2.kelem(idx);
+                //                 }
 
-                                if( LPTorder > 2 ){
-                                    phitot_v += vfac3 * phi3.kelem(idx);
-                                }
+                //                 if( LPTorder > 2 ){
+                //                     phitot_v += vfac3 * phi3.kelem(idx);
+                //                 }
                                 
-                                tmp.kelem(idx) = lg.gradient(idim,tmp.get_k3(i,j,k)) * phitot_v;
+                //                 tmp.kelem(idx) = lg.gradient(idim,tmp.get_k3(i,j,k)) * phitot_v;
                                 
-                                if( LPTorder > 2 ){
-                                    tmp.kelem(idx) += vfac3 * (lg.gradient(idimp,tmp.get_k3(i,j,k)) * A3[idimpp]->kelem(idx) - lg.gradient(idimpp,tmp.get_k3(i,j,k)) * A3[idimp]->kelem(idx));
-                                }
+                //                 if( LPTorder > 2 ){
+                //                     tmp.kelem(idx) += vfac3 * (lg.gradient(idimp,tmp.get_k3(i,j,k)) * A3[idimpp]->kelem(idx) - lg.gradient(idimpp,tmp.get_k3(i,j,k)) * A3[idimp]->kelem(idx));
+                //                 }
 
-                                // if multi-species, then add vbc component backwards
-                                if( bDoBaryons & bDoLinearBCcorr ){
-                                    real_t knorm = wnoise.get_k<real_t>(i,j,k).norm();
-                                    tmp.kelem(idx) -= vfac1 * C_species * the_cosmo_calc->get_amplitude_theta_bc(knorm, bDoLinearBCcorr) * wnoise.kelem(i,j,k) * lg.gradient(idim,tmp.get_k3(i,j,k)) / (knorm*knorm);
-                                }
+                //                 // if multi-species, then add vbc component backwards
+                //                 if( bDoBaryons & bDoLinearBCcorr ){
+                //                     real_t knorm = wnoise.get_k<real_t>(i,j,k).norm();
+                //                     tmp.kelem(idx) -= vfac1 * C_species * the_cosmo_calc->get_amplitude_theta_bc(knorm, bDoLinearBCcorr) * wnoise.kelem(i,j,k) * lg.gradient(idim,tmp.get_k3(i,j,k)) / (knorm*knorm);
+                //                 }
 
-                                // correct with interpolation kernel if we used interpolation to read out the positions (for glasses)
-                                if( the_output_plugin->write_species_as( this_species ) == output_type::particles && lattice_type == particle::lattice_glass){
-                                    tmp.kelem(idx) *= interp.compensation_kernel( tmp.get_k<real_t>(i,j,k) );
-                                }
+                //                 // correct with interpolation kernel if we used interpolation to read out the positions (for glasses)
+                //                 if( the_output_plugin->write_species_as( this_species ) == output_type::particles && lattice_type == particle::lattice_glass){
+                //                     tmp.kelem(idx) *= interp.compensation_kernel( tmp.get_k<real_t>(i,j,k) );
+                //                 }
 
-                                // correct velocity with PLT mode growth rate
-                                tmp.kelem(idx) *= lg.vfac_corr(tmp.get_k3(i,j,k));
+                //                 // correct velocity with PLT mode growth rate
+                //                 tmp.kelem(idx) *= lg.vfac_corr(tmp.get_k3(i,j,k));
 
-                                if( bAddExternalTides ){
-                                    // modify velocities with anisotropic expansion factor**2
-                                    tmp.kelem(idx) *= std::pow(lss_aniso_alpha[idim],2.0);
-                                }
+                //                 if( bAddExternalTides ){
+                //                     // modify velocities with anisotropic expansion factor**2
+                //                     tmp.kelem(idx) *= std::pow(lss_aniso_alpha[idim],2.0);
+                //                 }
 
-                                // divide by Lbox, because displacement is in box units for output plugin
-                                tmp.kelem(idx) *= vunit / boxlen;
-                            }
-                        }
-                    }
-                    tmp.zero_DC_mode();
-                    tmp.FourierTransformBackward();
+                //                 // divide by Lbox, because displacement is in box units for output plugin
+                //                 tmp.kelem(idx) *= vunit / boxlen;
+                //             }
+                //         }
+                //     }
+                //     tmp.zero_DC_mode();
+                //     tmp.FourierTransformBackward();
 
-                    // if we write particle data, store particle data in particle structure
-                    if( the_output_plugin->write_species_as( this_species ) == output_type::particles )
-                    {
-                        particle_lattice_generator_ptr->set_velocities( lattice_type, shifted_lattice, idim, the_output_plugin->has_64bit_reals(), tmp, the_config );
-                    }
-                    // otherwise write out the grid data directly to the output plugin
-                    else if( the_output_plugin->write_species_as( this_species ) == output_type::field_lagrangian )
-                    {
-                        fluid_component fc = (idim==0)? fluid_component::vx : ((idim==1)? fluid_component::vy : fluid_component::vz );
-                        the_output_plugin->write_grid_data( tmp, this_species, fc );
-                    }
-                }
+                //     // if we write particle data, store particle data in particle structure
+                //     if( the_output_plugin->write_species_as( this_species ) == output_type::particles )
+                //     {
+                //         particle_lattice_generator_ptr->set_velocities( lattice_type, shifted_lattice, idim, the_output_plugin->has_64bit_reals(), tmp, the_config );
+                //     }
+                //     // otherwise write out the grid data directly to the output plugin
+                //     else if( the_output_plugin->write_species_as( this_species ) == output_type::field_lagrangian )
+                //     {
+                //         fluid_component fc = (idim==0)? fluid_component::vx : ((idim==1)? fluid_component::vy : fluid_component::vz );
+                //         the_output_plugin->write_grid_data( tmp, this_species, fc );
+                //     }
+                // }
 
-                if( the_output_plugin->write_species_as( this_species ) == output_type::particles )
-                {
-                    the_output_plugin->write_particle_data( particle_lattice_generator_ptr->get_particles(), this_species, Omega[this_species] );
-                }
+                // if( the_output_plugin->write_species_as( this_species ) == output_type::particles )
+                // {
+                //     the_output_plugin->write_particle_data( particle_lattice_generator_ptr->get_particles(), this_species, Omega[this_species] );
+                // }
                 
-                if( the_output_plugin->write_species_as( this_species ) == output_type::field_lagrangian )
-                {
-                    // use density simply from 1st order SPT
-                    phi.FourierTransformForward();
-                    tmp.FourierTransformForward(false);
-                    tmp.assign_function_of_grids_kdep( []( auto kvec, auto pphi ){
-                        return kvec.norm_squared() *  pphi;
-                    }, phi);
-                    tmp.Write_PowerSpectrum("input_powerspec_sampled_SPT.txt");
-                    tmp.FourierTransformBackward();
-                    the_output_plugin->write_grid_data( tmp, this_species, fluid_component::density );
-                }
+            //     if( the_output_plugin->write_species_as( this_species ) == output_type::field_lagrangian )
+            //     {
+            //         // use density simply from 1st order SPT
+            //         phi.FourierTransformForward();
+            //         tmp.FourierTransformForward(false);
+            //         tmp.assign_function_of_grids_kdep( []( auto kvec, auto pphi ){
+            //             return kvec.norm_squared() *  pphi;
+            //         }, phi);
+            //         tmp.Write_PowerSpectrum("input_powerspec_sampled_SPT.txt");
+            //         tmp.FourierTransformBackward();
+            //         the_output_plugin->write_grid_data( tmp, this_species, fluid_component::density );
+            //     }
             }
 
         }
