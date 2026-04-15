@@ -384,6 +384,7 @@ void simbelmyne_output_plugin::write_grid_data(const Grid_FFT<real_t> &g, const 
         HDFCreateFile( file_name );
         // Simbelmyne header
         HDFCreateGroup( file_name, "info" );
+        HDFCreateGroup( file_name, "scalars" );
         HDFCreateSubGroup( file_name, "info", "scalars" );
         add_simbelmyne_metadata(file_name);
     }
@@ -393,19 +394,11 @@ void simbelmyne_output_plugin::write_grid_data(const Grid_FFT<real_t> &g, const 
     #endif
 
     // Write the dataset
-    g.Write_to_HDF5(file_name, field_name);
+    g.Write_to_HDF5(file_name, ("/scalars/" + field_name).c_str());
 
     #if defined(USE_MPI)
         MPI_Barrier( MPI_COMM_WORLD );
     #endif
-
-    if( CONFIG::MPI_task_rank == 0 )
-    {
-        // Move dataset to "/scalars/field"
-        HDFCreateGroup( file_name, "scalars" );
-        move_dataset_in_hdf5(file_name, field_name, "scalars", "field");
-    }
-
 
     music::ilog << interface_name_ << " : Wrote field \'" << field_name 
                 << "\' with Simbelmyne metadata to file \'" << file_name << "\'" << std::endl;
