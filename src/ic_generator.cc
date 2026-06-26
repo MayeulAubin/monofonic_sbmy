@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <array>
+
 #include <general.hh>
 #include <grid_fft.hh>
 #include <operators.hh>
@@ -872,19 +874,39 @@ int run( config_file& the_config )
                     phi2 *= g2;
                 }
                 if( LPTorder > 2 ){
+                    Grid_FFT<real_t> Psi3x({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen}, true);
+                    Grid_FFT<real_t> Psi3y({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen}, true);
+                    Grid_FFT<real_t> Psi3z({ngrid, ngrid, ngrid}, {boxlen, boxlen, boxlen}, true);
+                    std::array<Grid_FFT<real_t> *, 3> Psi3({&Psi3x, &Psi3y, &Psi3z});
+
                     phi3 /= g3;
-                    phi3.FourierTransformBackward();
-                    the_output_plugin->write_grid_data( phi3, this_species, fluid_component::phi3 );
-                    phi3.FourierTransformForward();
-                    phi3 *= g3;
-                    for( int idim=0; idim<3; ++idim ){
-                        fluid_component fc = (idim==0)? fluid_component::A1 : ((idim==1)? fluid_component::A2 : fluid_component::A3 );
+                    for( int idim=0; idim<3; ++idim )
                         *A3[idim] /= g3c;
-                        A3[idim]->FourierTransformBackward();
-                        the_output_plugin->write_grid_data( *A3[idim], this_species, fc );
-                        A3[idim]->FourierTransformForward();
-                        *A3[idim] *= g3c;
+
+                    for( int idim=0; idim<3; ++idim )
+                    {
+                        const int idimp = (idim + 1) % 3;
+                        const int idimpp = (idim + 2) % 3;
+
+                        Psi3[idim]->FourierTransformForward(false);
+                        Psi3[idim]->assign_function_of_grids_kdep(
+                            [idim, idimp, idimpp](auto k, auto pphi3, auto a3p, auto a3pp) {
+                                return ccomplex_t(0.0, 1.0) * (
+                                    real_t(k[idim]) * pphi3
+                                    + real_t(k[idimp]) * a3pp
+                                    - real_t(k[idimpp]) * a3p
+                                );
+                            },
+                            phi3, *A3[idimp], *A3[idimpp]
+                        );
+                        Psi3[idim]->FourierTransformBackward();
                     }
+
+                    the_output_plugin->write_vector_grid_data( Psi3, this_species, fluid_component::Psi3 );
+
+                    for( int idim=0; idim<3; ++idim )
+                        *A3[idim] *= g3c;
+                    phi3 *= g3;
                 }
 
 
@@ -1071,4 +1093,3 @@ int run( config_file& the_config )
 
 
 } // end namespace ic_generator
-

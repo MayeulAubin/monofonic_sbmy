@@ -73,6 +73,7 @@ enum class fluid_component
   A1,
   A2,
   A3,
+  Psi3,
 };
 enum class cosmo_species
 {

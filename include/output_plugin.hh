@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <array>
 #include <string>
 #include <cstring>
 #include <map>
@@ -60,6 +61,9 @@ public:
 
 	//! routine to write gridded fluid component data for a species
 	virtual void write_grid_data(const Grid_FFT<real_t> &g, const cosmo_species &s, const fluid_component &c ) {};
+
+	//! routine to write vector gridded fluid component data for a species
+	virtual void write_vector_grid_data(const std::array<Grid_FFT<real_t> *, 3> &g, const cosmo_species &s, const fluid_component &c ) {};
 
 	//! routine to query whether species is written as grid data
 	virtual output_type write_species_as ( const cosmo_species &s ) const = 0;
@@ -125,4 +129,3 @@ struct output_plugin_creator_concrete : public output_plugin_creator
 
 //! failsafe version to select the output plug-in
 std::unique_ptr<output_plugin> select_output_plugin(config_file &cf, std::unique_ptr<cosmology::calculator>& pcc);
-

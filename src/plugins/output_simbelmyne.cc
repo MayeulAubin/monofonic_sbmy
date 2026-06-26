@@ -31,7 +31,7 @@ class simbelmyne_output_plugin : public output_plugin
 private:
     std::string get_field_name( const cosmo_species &s, const fluid_component &c );
     template< typename T > void write_header_attribute( const std::string Filename, const std::string ObjName, const T &Data );
-    void add_simbelmyne_metadata( const std::string &fname );
+    void add_simbelmyne_metadata( const std::string &fname, int rank = 1 );
     void move_dataset_in_hdf5( const std::string &fname, const std::string &src_dset_name, const std::string &group_name, const std::string &tg_dset_name );
     void write_gadget_header();
     int get_species_idx(const cosmo_species &s) const;
@@ -129,6 +129,7 @@ public:
     real_t mass_unit() const { return munit_; }
 
     void write_grid_data(const Grid_FFT<real_t> &g, const cosmo_species &s, const fluid_component &c );
+    void write_vector_grid_data(const std::array<Grid_FFT<real_t> *, 3> &g, const cosmo_species &s, const fluid_component &c );
 
     void write_particle_data(const particle::container &pc, const cosmo_species &s, double Omega_species);
 };
@@ -286,6 +287,8 @@ std::string simbelmyne_output_plugin::get_field_name( const cosmo_species &s, co
             field_name += "A2"; break;
         case fluid_component::A3:
             field_name += "A3"; break;
+        case fluid_component::Psi3:
+            field_name += "Psi3"; break;
 		default: break;
 	}
 	return field_name;
@@ -306,14 +309,13 @@ void simbelmyne_output_plugin::write_header_attribute( const std::string Filenam
     H5Fclose( HDF_FileID ); 
 }
 
-void simbelmyne_output_plugin::add_simbelmyne_metadata( const std::string &fname )
+void simbelmyne_output_plugin::add_simbelmyne_metadata( const std::string &fname, int rank )
 {
     double L0 = cf_.get_value<double>("setup", "BoxLength");
     double L1=L0, L2=L0;
     double corner0=0.0, corner1=0.0, corner2=0.0;
     int N0 = cf_.get_value<int>("setup", "GridRes");
     int N1=N0, N2=N0;
-    int rank = 1;
     double time = 1.0/(1.0+cf_.get_value<double>("setup", "zstart"));
 
     write_header_attribute<double>(fname, "/info/scalars/L0", L0);
@@ -401,6 +403,111 @@ void simbelmyne_output_plugin::write_grid_data(const Grid_FFT<real_t> &g, const 
     #endif
 
     music::ilog << interface_name_ << " : Wrote field \'" << field_name 
+                << "\' with Simbelmyne metadata to file \'" << file_name << "\'" << std::endl;
+}
+
+void simbelmyne_output_plugin::write_vector_grid_data(const std::array<Grid_FFT<real_t> *, 3> &g, const cosmo_species &s, const fluid_component &c )
+{
+    std::string field_name = "field";
+    std::string file_subname = this->get_field_name( s, c );
+    std::string file_name = fname_ + file_subname + ".h5";
+
+    if( CONFIG::MPI_task_rank == 0 )
+    {
+        HDFCreateFile( file_name );
+        HDFCreateGroup( file_name, "info" );
+        HDFCreateGroup( file_name, "scalars" );
+        HDFCreateSubGroup( file_name, "info", "scalars" );
+        add_simbelmyne_metadata(file_name, 3);
+    }
+
+    #if defined(USE_MPI)
+        MPI_Barrier( MPI_COMM_WORLD );
+    #endif
+
+    const std::string dataset_name = "/scalars/" + field_name;
+    hsize_t dims[4] = {
+        3,
+        static_cast<hsize_t>(g[0]->global_size(0)),
+        static_cast<hsize_t>(g[0]->global_size(1)),
+        static_cast<hsize_t>(g[0]->global_size(2))
+    };
+
+    if( CONFIG::MPI_task_rank == 0 )
+    {
+        hid_t file_id = H5Fopen(file_name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+        hid_t filespace_id = H5Screate_simple(4, dims, NULL);
+        hid_t dataset_id = H5Dcreate(file_id, dataset_name.c_str(), GetDataType<real_t>(), filespace_id, H5P_DEFAULT);
+        H5Dclose(dataset_id);
+        H5Sclose(filespace_id);
+        H5Fclose(file_id);
+    }
+
+    #if defined(USE_MPI)
+        MPI_Barrier( MPI_COMM_WORLD );
+    #endif
+
+#if defined(USE_MPI)
+    const int mpi_rank = MPI::get_rank();
+    const int mpi_size = MPI::get_size();
+#else
+    const int mpi_rank = 0;
+    const int mpi_size = 1;
+#endif
+
+    for( int itask=0; itask<mpi_size; ++itask )
+    {
+#if defined(USE_MPI)
+        MPI_Barrier( MPI_COMM_WORLD );
+#endif
+        if( itask != mpi_rank )
+            continue;
+
+        hid_t file_id = H5Fopen(file_name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+        hid_t dataset_id = H5Dopen(file_id, dataset_name.c_str());
+
+        const hsize_t slice_size = static_cast<hsize_t>(g[0]->rsize(1)) * static_cast<hsize_t>(g[0]->rsize(2));
+        real_t *slice_buffer = new real_t[slice_size];
+
+        for( hsize_t idim=0; idim<3; ++idim )
+        {
+            hsize_t count[4] = {
+                1,
+                1,
+                static_cast<hsize_t>(g[idim]->rsize(1)),
+                static_cast<hsize_t>(g[idim]->rsize(2))
+            };
+            hsize_t offset[4] = {idim, 0, 0, 0};
+            hid_t memspace_id = H5Screate_simple(4, count, NULL);
+
+            for( hsize_t i=0; i<static_cast<hsize_t>(g[idim]->rsize(0)); ++i )
+            {
+                offset[1] = static_cast<hsize_t>(g[idim]->local_0_start_) + i;
+
+                for( hsize_t j=0; j<static_cast<hsize_t>(g[idim]->rsize(1)); ++j )
+                    for( hsize_t k=0; k<static_cast<hsize_t>(g[idim]->rsize(2)); ++k )
+                        slice_buffer[j * g[idim]->rsize(2) + k] = g[idim]->relem(i, j, k);
+
+                hid_t filespace_id = H5Dget_space(dataset_id);
+                H5Sselect_hyperslab(filespace_id, H5S_SELECT_SET, offset, NULL, count, NULL);
+                H5Dwrite(dataset_id, GetDataType<real_t>(), memspace_id, filespace_id, H5P_DEFAULT, slice_buffer);
+                H5Sclose(filespace_id);
+            }
+
+            H5Sclose(memspace_id);
+        }
+
+        delete[] slice_buffer;
+
+        H5Dclose(dataset_id);
+        H5Fclose(file_id);
+    }
+
+    #if defined(USE_MPI)
+        MPI_Barrier( MPI_COMM_WORLD );
+    #endif
+
+    music::ilog << interface_name_ << " : Wrote vector field \'" << field_name
                 << "\' with Simbelmyne metadata to file \'" << file_name << "\'" << std::endl;
 }
 
