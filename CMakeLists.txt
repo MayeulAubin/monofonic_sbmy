@@ -18,6 +18,7 @@
 cmake_minimum_required(VERSION 3.11)
 set(PRGNAME monofonIC)
 project(monofonIC C CXX)
+include(CheckCXXSourceCompiles)
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -Wall -fno-omit-frame-pointer -g  -fsanitize=address")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native -Wall -pedantic" CACHE STRING "Flags used by the compiler during Release builds." FORCE)
@@ -135,6 +136,7 @@ mark_as_advanced(pkgcfg_lib_GSL_gsl pkgcfg_lib_GSL_gslcblas pkgcfg_lib_GSL_m)
 
 ########################################################################################################################
 # HDF5
+option(ENABLE_HDF5_MPI_IO "Use parallel HDF5 MPI-IO writes" OFF)
 find_package(HDF5 REQUIRED)
 mark_as_advanced(HDF5_C_LIBRARY_dl HDF5_C_LIBRARY_hdf5 HDF5_C_LIBRARY_m HDF5_C_LIBRARY_pthread HDF5_C_LIBRARY_z HDF5_C_LIBRARY_sz)
 
@@ -276,6 +278,40 @@ if(HDF5_FOUND)
   target_link_libraries(${PRGNAME} PRIVATE ${HDF5_LIBRARIES})
   target_include_directories(${PRGNAME} PRIVATE ${HDF5_INCLUDE_DIRS})
   target_compile_definitions(${PRGNAME} PRIVATE "USE_HDF5")
+  if(ENABLE_HDF5_MPI_IO)
+    if(NOT ENABLE_MPI OR NOT MPI_CXX_FOUND)
+      message(FATAL_ERROR "ENABLE_HDF5_MPI_IO requires ENABLE_MPI=ON and a working MPI C++ compiler")
+    endif()
+
+    set(_save_cmake_required_includes "${CMAKE_REQUIRED_INCLUDES}")
+    set(_save_cmake_required_libraries "${CMAKE_REQUIRED_LIBRARIES}")
+    set(CMAKE_REQUIRED_INCLUDES ${HDF5_INCLUDE_DIRS} ${MPI_CXX_INCLUDE_PATH})
+    set(CMAKE_REQUIRED_LIBRARIES ${HDF5_LIBRARIES} ${MPI_CXX_LIBRARIES})
+    unset(HDF5_MPI_IO_COMPILES CACHE)
+    check_cxx_source_compiles("
+      #include <mpi.h>
+      #include <hdf5.h>
+      int main()
+      {
+        hid_t fapl = H5Pcreate(H5P_FILE_ACCESS);
+        H5Pset_fapl_mpio(fapl, MPI_COMM_WORLD, MPI_INFO_NULL);
+        hid_t dxpl = H5Pcreate(H5P_DATASET_XFER);
+        H5Pset_dxpl_mpio(dxpl, H5FD_MPIO_COLLECTIVE);
+        H5Pclose(dxpl);
+        H5Pclose(fapl);
+        return 0;
+      }
+    " HDF5_MPI_IO_COMPILES)
+    set(CMAKE_REQUIRED_INCLUDES "${_save_cmake_required_includes}")
+    set(CMAKE_REQUIRED_LIBRARIES "${_save_cmake_required_libraries}")
+
+    if(NOT HDF5_MPI_IO_COMPILES)
+      message(FATAL_ERROR "ENABLE_HDF5_MPI_IO=ON, but the detected HDF5 headers/libraries do not provide HDF5 MPI-IO. Use a parallel HDF5 wrapper such as h5pcc via -DHDF5_C_COMPILER_EXECUTABLE=/path/to/h5pcc.")
+    endif()
+
+    target_compile_definitions(${PRGNAME} PRIVATE "USE_MPI_IO")
+    message(STATUS "Enabling USE_MPI_IO for parallel HDF5 writes")
+  endif()
 endif(HDF5_FOUND)
 
 if(ENABLE_PANPHASIA)
