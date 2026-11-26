@@ -111,3 +111,26 @@ specifying the desired number of threads per task in the config file, and the nu
 ```
 
 It will then run with 16 tasks times the number of threads per task specified in the config file.
+
+## External white noise (`generator = FILE`)
+
+The `FILE` random plugin (`src/plugins/random_file.cc`) reads the white noise from an HDF5 file
+instead of generating it:
+
+```
+[random]
+generator     = FILE
+noise_file    = /path/to/white_noise.h5
+noise_dataset = /scalars/field   # default (pysbmy/Simbelmyne Field layout)
+```
+
+The data set must be real-space, zero-mean, unit-variance noise of shape `GridRes^3` in C order
+with axis 0 = x (e.g. `numpy.random.default_rng(seed).standard_normal((N,N,N), np.float32)`),
+float32 or float64. Each MPI task reads only its own slab through HDF5 hyperslabs, so virtual data
+sets over per-tile files work. A shape mismatch aborts. `seed` is ignored.
+
+With the `simbelmyne` output format, the same noise gives the same initial density as Simbelmyne
+(`ICsMode=1`, same P(k)) to float32 precision, and the same `phi1`, `phi2` sign/normalisation/axis
+order. The potentials still differ by the discrete operators: monofonIC uses exact `ik` derivatives
+(and 3/2 dealiasing), Simbelmyne FD2 ones. `testing/compare_external_noise_sbmy.py` runs both
+codes on one noise and prints the differences.
